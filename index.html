@@ -218,8 +218,32 @@ async function loadPrograms() {
     `;
   }).join("");
 } 
- function exercisesPage(){return `<div class="topbar">Workspace / <b style="color:var(--text)">Exercise Library</b></div><div class="page-head"><div><div class="eyebrow">EXERCISE DATABASE</div><h1>Exercise library</h1><p>Search the exercise catalogue for your programs.</p></div></div>${panel("Exercises","Starter catalogue",`<input id="exerciseSearch" class="search" placeholder="Search exercises…" style="margin-bottom:12px"><div id="exerciseList">${exercises.map(e=>`<div class="exercise-row"><span class="avatar">✣</span><div class="client-info"><strong>${e}</strong><small>Exercise details and media will be added to the database.</small></div></div>`).join("")}</div>`)}`}
-function genericPage(name){let copy={"Schedule":"Manage client appointments, training sessions, rest days and rescheduled sessions.","Attendance":"Record attendance separately from workout completion.","Progress":"Review body metrics, exercise performance and personal records.","Today's Workout":"View your assigned workout, then record each set in sequence.","My Program":"View the program prescribed by your trainer.","Workout History":"Review completed workouts and historical performance.","My Progress":"Track your body metrics and strength progression.","My Trainer":"View your assigned trainer and training information."};return `<div class="topbar">Workspace / <b style="color:var(--text)">${name}</b></div><div class="page-head"><div><div class="eyebrow">${currentRole==="trainer"?"TRAINER WORKSPACE":"CLIENT WORKSPACE"}</div><h1>${name}</h1><p>${copy[name]||"Your fitness workspace."}</p></div></div>${panel(name,"Feature setup in progress",`<div class="empty">This section is ready for the next development phase. No live records are connected yet.</div>`)}<div class="notice">The platform will preserve the core workflow: trainer prescribes → client executes → system records → trainer monitors.</div>`}
+
+function exercisesPage() {
+  return `
+    <div class="topbar">
+      Workspace / <b style="color:var(--text)">Exercise Library</b>
+    </div>
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">EXERCISE DATABASE</div>
+        <h1>Exercise library</h1>
+        <p>Search the exercise catalogue for your programs.</p>
+      </div>
+    </div>
+    ${panel("Exercise library", "Exercises stored in your database", `
+      <input
+        id="exerciseSearch"
+        class="search"
+        placeholder="Search exercises..."
+        style="margin-bottom:12px"
+      >
+      <div id="exerciseList">
+        <p class="muted">Loading exercises...</p>
+      </div>
+    `)}
+  `;
+}function genericPage(name){let copy={"Schedule":"Manage client appointments, training sessions, rest days and rescheduled sessions.","Attendance":"Record attendance separately from workout completion.","Progress":"Review body metrics, exercise performance and personal records.","Today's Workout":"View your assigned workout, then record each set in sequence.","My Program":"View the program prescribed by your trainer.","Workout History":"Review completed workouts and historical performance.","My Progress":"Track your body metrics and strength progression.","My Trainer":"View your assigned trainer and training information."};return `<div class="topbar">Workspace / <b style="color:var(--text)">${name}</b></div><div class="page-head"><div><div class="eyebrow">${currentRole==="trainer"?"TRAINER WORKSPACE":"CLIENT WORKSPACE"}</div><h1>${name}</h1><p>${copy[name]||"Your fitness workspace."}</p></div></div>${panel(name,"Feature setup in progress",`<div class="empty">This section is ready for the next development phase. No live records are connected yet.</div>`)}<div class="notice">The platform will preserve the core workflow: trainer prescribes → client executes → system records → trainer monitors.</div>`}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 
 function renderPage(name) {
