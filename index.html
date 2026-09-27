@@ -128,7 +128,71 @@ function programsPage(){return `<div class="topbar">Workspace / <b style="color:
 function exercisesPage(){return `<div class="topbar">Workspace / <b style="color:var(--text)">Exercise Library</b></div><div class="page-head"><div><div class="eyebrow">EXERCISE DATABASE</div><h1>Exercise library</h1><p>Search the exercise catalogue for your programs.</p></div></div>${panel("Exercises","Starter catalogue",`<input id="exerciseSearch" class="search" placeholder="Search exercises…" style="margin-bottom:12px"><div id="exerciseList">${exercises.map(e=>`<div class="exercise-row"><span class="avatar">✣</span><div class="client-info"><strong>${e}</strong><small>Exercise details and media will be added to the database.</small></div></div>`).join("")}</div>`)}`}
 function genericPage(name){let copy={"Schedule":"Manage client appointments, training sessions, rest days and rescheduled sessions.","Attendance":"Record attendance separately from workout completion.","Progress":"Review body metrics, exercise performance and personal records.","Today's Workout":"View your assigned workout, then record each set in sequence.","My Program":"View the program prescribed by your trainer.","Workout History":"Review completed workouts and historical performance.","My Progress":"Track your body metrics and strength progression.","My Trainer":"View your assigned trainer and training information."};return `<div class="topbar">Workspace / <b style="color:var(--text)">${name}</b></div><div class="page-head"><div><div class="eyebrow">${currentRole==="trainer"?"TRAINER WORKSPACE":"CLIENT WORKSPACE"}</div><h1>${name}</h1><p>${copy[name]||"Your fitness workspace."}</p></div></div>${panel(name,"Feature setup in progress",`<div class="empty">This section is ready for the next development phase. No live records are connected yet.</div>`)}<div class="notice">The platform will preserve the core workflow: trainer prescribes → client executes → system records → trainer monitors.</div>`}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function renderPage(name){activePage=name;renderNav();$("mainContent").innerHTML=currentRole==="trainer"?(name==="Overview"?dashboard():name==="Clients"?clientsPage():name==="Workout Programs"?programsPage():name==="Exercise Library"?exercisesPage():genericPage(name)):genericPage(name);$("mainContent").querySelectorAll("[data-client]").forEach(b=>b.onclick=()=>openClient(Number(b.dataset.client)));const np=$("newProgram");if(np)np.onclick=openProgramModal;const ac=$("addClient");if(ac)ac.onclick=()=>showModal("Add client",`<p class="muted">Clients must register with a valid Trainer ID. The secure invite and linking flow will be added next.</p><button class="primary" onclick="closeModal()">Got it</button>`);const cs=$("clientSearch");if(cs)cs.oninput=()=>{$("clientList").querySelectorAll(".client-row").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(cs.value.toLowerCase())?"":"none")};const es=$("exerciseSearch");if(es)es.oninput=()=>{$("exerciseList").querySelectorAll(".exercise-row").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(es.value.toLowerCase())?"":"none")}}
+
+function renderPage(name) {
+  activePage = name;
+  renderNav();
+
+  $("mainContent").innerHTML =
+    currentRole === "trainer"
+      ? name === "Overview"
+        ? dashboard()
+        : name === "Clients"
+          ? clientsPage()
+          : name === "Workout Programs"
+            ? programsPage()
+            : name === "Exercise Library"
+              ? exercisesPage()
+              : genericPage(name)
+      : genericPage(name);
+
+  $("mainContent").querySelectorAll("[data-client]")
+    .forEach(b => b.onclick = () =>
+      openClient(Number(b.dataset.client))
+    );
+
+  const np = $("newProgram");
+  if (np) np.onclick = openProgramModal;
+
+  const ac = $("addClient");
+  if (ac) ac.onclick = () =>
+    showModal(
+      "Add client",
+      `<p class="muted">
+        Clients must register with a valid Trainer ID.
+        Ask your client to register using your trainer code.
+      </p>
+      <button class="primary" onclick="closeModal()">Got it</button>`
+    );
+
+  const cs = $("clientSearch");
+  if (cs) {
+    cs.oninput = () => {
+      $("clientList").querySelectorAll(".client-row")
+        .forEach(r => {
+          r.style.display = r.textContent
+            .toLowerCase()
+            .includes(cs.value.toLowerCase()) ? "" : "none";
+        });
+    };
+  }
+
+  const es = $("exerciseSearch");
+  if (es) {
+    es.oninput = () => {
+      $("exerciseList").querySelectorAll(".exercise-row")
+        .forEach(r => {
+          r.style.display = r.textContent
+            .toLowerCase()
+            .includes(es.value.toLowerCase()) ? "" : "none";
+        });
+    };
+  }
+
+  if (name === "Clients" && currentRole === "trainer") {
+    loadClients();
+  }
+}
 function showModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.remove("hidden")}
 function closeModal(){$("modal").classList.add("hidden")}
 $("closeModal").onclick=closeModal;$("modal").onclick=e=>{if(e.target===$("modal"))closeModal()};
