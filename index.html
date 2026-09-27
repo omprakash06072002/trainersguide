@@ -69,6 +69,59 @@ function renderNav(){const items=currentRole==="trainer"?[["Overview","◫"],["C
 function panel(title,sub,body,action=""){return `<section class="panel"><div class="panel-head"><div><h2>${title}</h2>${sub?`<div class="panel-sub">${sub}</div>`:""}</div>${action}</div>${body}</section>`}
 function stat(label,value,detail){return `<div class="stat"><small>${label}</small><strong>${value}</strong><em>${detail}</em></div>`}
 function clientRows(){return demoClients.map((c,i)=>`<div class="client-row"><span class="avatar ${c.color}" style="${c.color==="orange"?"background:#352617;color:#ffb46d":c.color==="pink"?"background:#382333;color:#ff9bc2":""}">${c.name.split(" ").map(x=>x[0]).join("")}</span><div class="client-info"><strong>${c.name}</strong><small>@${c.username} · ${c.program}</small></div><span class="pill ${c.status==="Inactive"?"gray":""}">${c.status}</span><button class="link" data-client="${i}">View</button></div>`).join("")}
+
+async function loadClients() {
+  const list = $("clientList");
+  if (!list || !currentUser || !sb) return;
+
+  list.innerHTML = '<p class="muted">Loading clients...</p>';
+
+  const { data: clients, error } = await sb
+    .from("clients")
+    .select("id, trainer_id, current_weight_kg")
+    .eq("trainer_id", currentUser.id);
+
+  if (error) {
+    list.innerHTML = `<p class="muted">Could not load clients: ${esc(error.message)}</p>`;
+    return;
+  }
+
+  if (!clients || clients.length === 0) {
+    list.innerHTML = '<p class="muted">No registered clients yet.</p>';
+    return;
+  }
+
+  const ids = clients.map(client => client.id);
+
+  const { data: profiles, error: profileError } = await sb
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", ids);
+
+  if (profileError) {
+    list.innerHTML = `<p class="muted">Could not load client profiles: ${esc(profileError.message)}</p>`;
+    return;
+  }
+
+  const names = new Map(
+    (profiles || []).map(profile => [profile.id, profile.full_name])
+  );
+
+  list.innerHTML = clients.map(client => {
+    const name = names.get(client.id) || "Client";
+    const initials = name.trim().split(/\s+/)
+      .map(part => part[0]).join("").slice(0, 2).toUpperCase();
+
+    return `<div class="client-row">
+      <span class="avatar">${esc(initials)}</span>
+      <div class="client-info">
+        <strong>${esc(name)}</strong>
+        <small>Registered client</small>
+      </div>
+      <span class="pill">Active</span>
+    </div>`;
+  }).join("");
+} 
 function dashboard(){return `<div class="topbar"><span>Workspace / <b style="color:var(--text)">Overview</b></span><div class="top-actions"><span>${new Date().toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})}</span><button class="primary" id="newProgram">＋ New program</button></div></div><div class="page-head"><div><div class="eyebrow">TRAINER DASHBOARD</div><h1>Welcome, ${esc($("userName").textContent)} ✦</h1><p>Manage your clients, prescribe workouts and monitor progress.</p></div><span class="pill">● Workspace active</span></div><div class="stats">${stat("Total clients","—","Connect database to load")}${stat("Active programs","—","Live data pending")}${stat("Today's sessions","—","Live data pending")}${stat("Attendance","—","Live data pending")}</div><div class="grid2">${panel("Workout activity","Client sessions will appear here",`<div class="chart">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<div class="chart-col"><div class="bar ${i===6?"current":""}" style="height:${[54,72,62,84,66,94,38][i]}%"></div><small>${d}</small></div>`).join("")}</div>`)}${panel("Client overview","Sample layout · not live data",clientRows())}</div><div class="grid2" style="margin-top:14px">${panel("Recent workout sessions","Live records will appear after database integration",`<div class="empty">No workout sessions loaded yet.</div>`)}${panel("Today's schedule","Trainer appointments",`<div class="empty">No appointments loaded yet.</div>`)}</div><div class="notice">This is the application UI foundation. The numbers and sample client list are illustrative only. Next we connect secure database operations and replace these placeholders with real records.</div>`}
 function clientsPage(){return `<div class="topbar">Workspace / <b style="color:var(--text)">Clients</b><span></span></div><div class="page-head"><div><div class="eyebrow">CLIENT MANAGEMENT</div><h1>Clients</h1><p>Manage your roster and open individual client profiles.</p></div><button class="primary" id="addClient">＋ Add client</button></div>${panel("Your client roster","Sample entries only",`<div class="panel-head"><input class="search" id="clientSearch" placeholder="Search clients…"></div><div id="clientList">${clientRows()}</div>`)}<div class="notice">Client creation will be connected to the Trainer ID registration flow after database permissions are verified.</div>`}
 function programsPage(){return `<div class="topbar">Workspace / <b style="color:var(--text)">Workout Programs</b></div><div class="page-head"><div><div class="eyebrow">PROGRAMMING</div><h1>Workout programs</h1><p>Create trainer-prescribed plans with days, exercises, sets and targets.</p></div><button class="primary" id="newProgram">＋ New program</button></div>${panel("Program builder","UI preview · saving will be enabled after database integration",`<div class="empty">No programs connected yet.</div><div class="program-day"><strong>Example: Hypertrophy Phase 1</strong><p class="tag">8 weeks · 6 training days · Example only</p><div class="exercise-row"><div class="client-info"><strong>Monday — Push</strong><small>Incline Dumbbell Press · 4 sets · 8–12 reps · 30 kg · 120 sec rest</small></div></div><div class="exercise-row"><div class="client-info"><strong>Shoulder Press</strong><small>3 sets · 8–10 reps · 90 sec rest</small></div></div><div class="exercise-row"><div class="client-info"><strong>Lateral Raise</strong><small>4 sets · 12–15 reps · 60 sec rest</small></div></div></div>`)}<div class="notice">Program changes must be trainer-controlled. Clients will be able to record actual performance without editing prescribed targets.</div>`}
