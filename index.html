@@ -243,7 +243,49 @@ function exercisesPage() {
       </div>
     `)}
   `;
-}function genericPage(name){let copy={"Schedule":"Manage client appointments, training sessions, rest days and rescheduled sessions.","Attendance":"Record attendance separately from workout completion.","Progress":"Review body metrics, exercise performance and personal records.","Today's Workout":"View your assigned workout, then record each set in sequence.","My Program":"View the program prescribed by your trainer.","Workout History":"Review completed workouts and historical performance.","My Progress":"Track your body metrics and strength progression.","My Trainer":"View your assigned trainer and training information."};return `<div class="topbar">Workspace / <b style="color:var(--text)">${name}</b></div><div class="page-head"><div><div class="eyebrow">${currentRole==="trainer"?"TRAINER WORKSPACE":"CLIENT WORKSPACE"}</div><h1>${name}</h1><p>${copy[name]||"Your fitness workspace."}</p></div></div>${panel(name,"Feature setup in progress",`<div class="empty">This section is ready for the next development phase. No live records are connected yet.</div>`)}<div class="notice">The platform will preserve the core workflow: trainer prescribes → client executes → system records → trainer monitors.</div>`}
+}
+ 
+async function loadExercises() {
+  const list = $("exerciseList");
+  if (!list || !sb) return;
+
+  list.innerHTML = '<p class="muted">Loading exercises...</p>';
+
+  const { data, error } = await sb
+    .from("exercises")
+    .select("id, name, description, muscle_group, equipment, instructions, image_url")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) {
+    list.innerHTML =
+      `<p class="muted">Could not load exercises: ${esc(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML =
+      '<div class="empty">No exercises found. Add exercises to your library first.</div>';
+    return;
+  }
+
+  list.innerHTML = data.map(exercise => `
+    <div class="exercise-row">
+      <span class="avatar">✣</span>
+      <div class="client-info">
+        <strong>${esc(exercise.name)}</strong>
+        <small>
+          ${esc(exercise.muscle_group || "Muscle group not specified")}
+          · ${esc(exercise.equipment || "Equipment not specified")}
+        </small>
+        ${exercise.description
+          ? `<p class="muted">${esc(exercise.description)}</p>`
+          : ""}
+      </div>
+    </div>
+  `).join("");
+}
+ function genericPage(name){let copy={"Schedule":"Manage client appointments, training sessions, rest days and rescheduled sessions.","Attendance":"Record attendance separately from workout completion.","Progress":"Review body metrics, exercise performance and personal records.","Today's Workout":"View your assigned workout, then record each set in sequence.","My Program":"View the program prescribed by your trainer.","Workout History":"Review completed workouts and historical performance.","My Progress":"Track your body metrics and strength progression.","My Trainer":"View your assigned trainer and training information."};return `<div class="topbar">Workspace / <b style="color:var(--text)">${name}</b></div><div class="page-head"><div><div class="eyebrow">${currentRole==="trainer"?"TRAINER WORKSPACE":"CLIENT WORKSPACE"}</div><h1>${name}</h1><p>${copy[name]||"Your fitness workspace."}</p></div></div>${panel(name,"Feature setup in progress",`<div class="empty">This section is ready for the next development phase. No live records are connected yet.</div>`)}<div class="notice">The platform will preserve the core workflow: trainer prescribes → client executes → system records → trainer monitors.</div>`}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 
 function renderPage(name) {
@@ -311,6 +353,9 @@ function renderPage(name) {
   }
  if (name === "Workout Programs" && currentRole === "trainer") {
   loadPrograms();
+}
+ if (name === "Exercise Library" && currentRole === "trainer") {
+  loadExercises();
 }
 }
 function showModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.remove("hidden")}
