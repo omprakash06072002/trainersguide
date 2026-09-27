@@ -197,8 +197,123 @@ function showModal(title,body){$("modalTitle").textContent=title;$("modalBody").
 function closeModal(){$("modal").classList.add("hidden")}
 $("closeModal").onclick=closeModal;$("modal").onclick=e=>{if(e.target===$("modal"))closeModal()};
 function openClient(i){const c=demoClients[i];showModal("Client profile",`<div class="client-row"><span class="avatar">${c.name.split(" ").map(x=>x[0]).join("")}</span><div class="client-info"><strong>${c.name}</strong><small>@${c.username}</small></div><span class="pill">${c.status}</span></div><p class="muted">${c.detail}</p><p><b>Current program:</b> ${c.program}</p><div class="notice">This is a sample profile. Real client records will be loaded from Supabase after secure ownership policies are tested.</div>`)}
-function openProgramModal(){showModal("Create workout program",`<form id="programForm"><label>Program name</label><input required placeholder="e.g. Hypertrophy Phase 1"><div class="field-row"><div><label>Duration (weeks)</label><input type="number" min="1" placeholder="8"></div><div><label>Assign to client</label><select><option>Select client</option>${demoClients.map(c=>`<option>${c.name}</option>`).join("")}</select></div></div><label>Description</label><textarea rows="3" placeholder="Program goals and notes"></textarea><div class="notice">This form is a UI preview and does not save yet. Database write operations will be added after schema and RLS verification.</div><button class="primary full" type="submit">Preview program</button></form>`);$("programForm").onsubmit=e=>{e.preventDefault();showModal("Program preview",`<p class="muted">Your program details are ready for the next build phase. Saving is not enabled yet.</p><button class="primary" onclick="closeModal()">Close</button>`)}}
-$("authForm").onsubmit=async e=>{e.preventDefault();if(!SUPABASE_CONFIGURED){showMsg("Supabase is not configured. Edit index.html and replace the Project URL and Publishable Key placeholders.");return}if(!sb){showMsg("Supabase client could not load. Check your internet connection and reload.");return}const email=$("email").value.trim(),password=$("password").value;$("submitBtn").disabled=true;try{if(mode==="signup"){const role=$("role").value,meta={full_name:$("fullName").value.trim(),account_name:$("username").value.trim(),role};if(role==="client"){meta.age=Number($("age").value);meta.height_cm=Number($("height").value);meta.weight_kg=Number($("weight").value);meta.trainer_code=$("trainerCode").value.trim()}if(!meta.full_name||!meta.account_name)throw Error("Enter your full name and account name.");if(role==="client"&&(!meta.age||!meta.height_cm||!meta.weight_kg||!meta.trainer_code))throw Error("Complete all client fields, including Trainer ID.");const {data,error}=await sb.auth.signUp({email,password,options:{data:meta}});if(error)throw error;if(data.session&&data.user)enterApp(data.user);else showMsg("Account created. Check your email to confirm your account, then log in. Note: trainer-code validation and profile creation must be enabled in the backend before client registration is production-ready.")}else{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;if(data.user)enterApp(data.user)}}catch(err){showMsg(err.message||"Authentication failed.")}finally{$("submitBtn").disabled=false}};
+
+async function openProgramModal() {
+  if (!sb || !currentUser) {
+    showMsg("Please log in again.");
+    return;
+  }
+
+  const { data: clients, error } = await sb
+    .from("clients")
+    .select("id")
+    .eq("trainer_id", currentUser.id);
+
+  if (error) {
+    showMsg("Could not load clients: " + error.message);
+    return;
+  }
+
+  if (!clients || clients.length === 0) {
+    showMsg("Register a client before creating a program.");
+    return;
+  }
+
+  const { data: profiles, error: profileError } = await sb
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", clients.map(c => c.id));
+
+  if (profileError) {
+    showMsg("Could not load client names: " + profileError.message);
+    return;
+  }
+
+  const options = (profiles || []).map(p =>
+    `<option value="${p.id}">${esc(p.full_name || "Client")}</option>`
+  ).join("");
+
+  showModal("Create workout program", `
+    <form id="programForm">
+      <label>Program name</label>
+      <input id="programName" required
+        placeholder="e.g. Hypertrophy Phase 1">
+
+      <div class="field-row">
+        <div>
+          <label>Duration (weeks)</label>
+          <input id="programDuration" type="number"
+            min="1" max="52" value="8" required>
+        </div>
+        <div>
+          <label>Assign to client</label>
+          <select id="programClient" required>
+            <option value="">Select client</option>
+            ${options}
+          </select>
+        </div>
+      </div>
+
+      <label>Description</label>
+      <textarea id="programDescription" rows="3"
+        placeholder="Program goals and notes"></textarea>
+
+      <button class="primary full" type="submit">
+        Save program
+      </button>
+    </form>
+  `);
+
+  $("programForm").onsubmit = async e => {
+    e.preventDefault();
+
+    const name = $("programName").value.trim();
+    const duration = Number($("programDuration").value);
+    const clientId = $("programClient").value;
+    const description = $("programDescription").value.trim();
+
+    if (!name || !clientId || !Number.isInteger(duration) ||
+        duration < 1 || duration > 52) {
+      showMsg("Please complete all required fields.");
+      return;
+    }
+
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + duration * 7);
+
+    const formatDate = date =>
+      date.getFullYear() + "-" +
+      String(date.getMonth() + 1).padStart(2, "0") + "-" +
+      String(date.getDate()).padStart(2, "0");
+
+    const button = $("programForm").querySelector(
+      'button[type="submit"]'
+    );
+    button.disabled = true;
+
+    try {
+      const { error } = await sb.from("programs").insert({
+        trainer_id: currentUser.id,
+        client_id: clientId,
+        name,
+        description,
+        start_date: formatDate(start),
+        end_date: formatDate(end),
+        status: "draft"
+      });
+
+      if (error) throw error;
+
+      closeModal();
+      showMsg("Workout program saved successfully.");
+    } catch (err) {
+      showMsg(err.message || "Could not save program.");
+    } finally {
+      if (button) button.disabled = false;
+    }
+  };
+}$("authForm").onsubmit=async e=>{e.preventDefault();if(!SUPABASE_CONFIGURED){showMsg("Supabase is not configured. Edit index.html and replace the Project URL and Publishable Key placeholders.");return}if(!sb){showMsg("Supabase client could not load. Check your internet connection and reload.");return}const email=$("email").value.trim(),password=$("password").value;$("submitBtn").disabled=true;try{if(mode==="signup"){const role=$("role").value,meta={full_name:$("fullName").value.trim(),account_name:$("username").value.trim(),role};if(role==="client"){meta.age=Number($("age").value);meta.height_cm=Number($("height").value);meta.weight_kg=Number($("weight").value);meta.trainer_code=$("trainerCode").value.trim()}if(!meta.full_name||!meta.account_name)throw Error("Enter your full name and account name.");if(role==="client"&&(!meta.age||!meta.height_cm||!meta.weight_kg||!meta.trainer_code))throw Error("Complete all client fields, including Trainer ID.");const {data,error}=await sb.auth.signUp({email,password,options:{data:meta}});if(error)throw error;if(data.session&&data.user)enterApp(data.user);else showMsg("Account created. Check your email to confirm your account, then log in. Note: trainer-code validation and profile creation must be enabled in the backend before client registration is production-ready.")}else{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;if(data.user)enterApp(data.user)}}catch(err){showMsg(err.message||"Authentication failed.")}finally{$("submitBtn").disabled=false}};
 $("logoutBtn").onclick=async()=>{if(sb)await sb.auth.signOut();currentUser=null;$("app").classList.add("hidden");$("authPage").classList.remove("hidden");setMode("login")};
 if(sb){sb.auth.getSession().then(({data,error})=>{if(!error&&data.session)enterApp(data.session.user)});sb.auth.onAuthStateChange((_event,session)=>{if(session&&$("authPage").classList.contains("hidden"))currentUser=session.user})}
 setMode("login");
