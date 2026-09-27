@@ -422,7 +422,14 @@ async function openProgramModal() {
       <label>Description</label>
       <textarea id="programDescription" rows="3"
         placeholder="Program goals and notes"></textarea>
-
+      <label>Number of training days</label>
+      <select id="programDays" required>
+        <option value="3">3 days per week</option>
+        <option value="4">4 days per week</option>
+        <option value="5">5 days per week</option>
+        <option value="6" selected>6 days per week</option>
+        <option value="7">7 days per week</option>
+       </select>
       <button class="primary full" type="submit">
         Save program
       </button>
